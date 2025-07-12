@@ -93,6 +93,31 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
+/* Style for the context tracking toggle button to match chat bubbles */
+.msg.context-toggle {
+  background: #f4f4f4;
+  color: #333;
+  border: 2px solid #e5e5e5;
+  border-left: 6px solid #c7a008;
+  border-radius: 18px;
+  font-size: 17px;
+  padding: 10px 18px;
+  margin-bottom: 14px;
+  max-width: 75%;
+  display: inline-block;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+  outline: none;
+}
+
+.msg.context-toggle:focus,
+.msg.context-toggle:hover {
+  background: #fffbe6;
+  border-color: #c7a008;
+  color: #000;
+}
+
 /* input row */
 .chat-form {
   display: flex;
