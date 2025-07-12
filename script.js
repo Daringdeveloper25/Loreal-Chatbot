@@ -11,7 +11,7 @@ let messages = [
   {
     role: "system",
     content:
-      "You are a helpful assistant for L'Oréal product and routine advice.",
+      "You are a helpful assistant for L'Oréal product and routine advice. Always remember details the user shares in this conversation and use them to give more helpful, personalized answers.",
   },
 ];
 
@@ -33,13 +33,12 @@ async function getAIResponse() {
 
   // Prepare the API request
   const apiUrl = "https://api.openai.com/v1/chat/completions";
-  // Use the API key from secrets.js
   const apiKey = OPENAI_API_KEY;
 
   // Build the request body
   const requestBody = {
     model: "gpt-4o", // Use the gpt-4o model
-    messages: messages,
+    messages: messages, // Send the full conversation for context
     max_tokens: 300, // Limit the response length
   };
 
@@ -72,7 +71,7 @@ async function getAIResponse() {
     // Add AI reply to chat window
     addMessage(aiReply, "ai");
 
-    // Add AI reply to messages array
+    // Add AI reply to messages array for context
     messages.push({ role: "assistant", content: aiReply });
   } catch (error) {
     // Remove the loading message if there's an error
