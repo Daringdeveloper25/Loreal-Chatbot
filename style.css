@@ -62,11 +62,11 @@ body {
   font-size: 17px;
 }
 
-/* User message bubble: right-aligned, gold border */
+/* User message bubble: right-aligned, light red background */
 .msg.user {
   color: #000;
-  background: #ffb8bd;
-  border: 2px solid #f02626;
+  background: #ffb8bd; /* light red */
+  border: 2px solid #f02626; /* red border */
   margin-left: auto;
   margin-right: 0;
   text-align: right;
@@ -77,12 +77,12 @@ body {
   box-shadow: 0 2px 8px rgba(199, 160, 8, 0.06);
 }
 
-/* AI message bubble: left-aligned, gold accent */
+/* AI message bubble: left-aligned, lighter red background */
 .msg.ai {
   color: #333;
-  background: #ffe2e4;
+  background: #ffe2e4; /* even lighter red */
   border: 2px solid #e5e5e5;
-  border-left: 6px solid #ed222f; /* Gold accent */
+  border-left: 6px solid #ed222f; /* red accent */
   margin-right: auto;
   margin-left: 0;
   text-align: left;
@@ -93,7 +93,7 @@ body {
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 }
 
-/* Style for the context tracking toggle button to match chat bubbles */
+/* Style for the context/history toggle buttons to match chat bubbles */
 .msg.context-toggle {
   background: #f4f4f4;
   color: #333;
@@ -137,12 +137,7 @@ body {
 /* Make the placeholder text in the input field white */
 .chat-form input::placeholder {
   color: #fff;
-  opacity: 1; /* Ensure full opacity for white */
-}
-
-.chat-form input:focus {
-  outline: 2px solid #000;
-  outline-offset: 2px;
+  opacity: 1;
 }
 
 .chat-form button {

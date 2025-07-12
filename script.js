@@ -6,23 +6,18 @@ const chatWindow = document.getElementById("chatWindow");
 // Set initial message
 chatWindow.textContent = "👋 Hello! How can I help you today?";
 
-// Option to enable or disable context tracking
-let contextTrackingEnabled = true;
-
-// Option to enable or disable showing conversation history
-let showHistoryEnabled = true;
-
-// Store the full conversation history
-let fullHistory = [
+// Store the conversation as an array of messages
+let messages = [
   {
     role: "system",
     content:
-      "You are a helpful assistant for L'Oréal product and routine advice. Always remember details the user shares in this conversation (like their name, preferences, and past questions) and use them to give more helpful, personalized answers.",
+      "You are a helpful assistant for L'Oréal product and routine advice.",
   },
 ];
 
-// The messages array sent to OpenAI (changes depending on contextTrackingEnabled)
-let messages = [...fullHistory];
+// Add context tracking and show history options
+let contextTrackingEnabled = true;
+let showHistoryEnabled = true;
 
 // Function to add a message to the chat window
 function addMessage(text, sender) {
@@ -37,9 +32,9 @@ function addMessage(text, sender) {
 
 // Function to clear all user and AI messages from the chat window
 function clearChatMessages() {
-  // Remove all .msg.user and .msg.ai elements
-  const allMsgs = chatWindow.querySelectorAll(".msg.user, .msg.ai");
-  allMsgs.forEach((msg) => chatWindow.removeChild(msg));
+  while (chatWindow.firstChild) {
+    chatWindow.removeChild(chatWindow.firstChild);
+  }
 }
 
 // Function to render the conversation in the chat window
@@ -48,23 +43,23 @@ function renderConversation() {
   if (showHistoryEnabled) {
     // Show all user and AI messages (skip system)
     let startIdx = 0;
-    if (fullHistory.length > 0 && fullHistory[0].role === "system") {
+    if (messages.length > 0 && messages[0].role === "system") {
       startIdx = 1;
     }
-    for (let i = startIdx; i < fullHistory.length; i++) {
-      const msg = fullHistory[i];
+    for (let i = startIdx; i < messages.length; i++) {
+      const msg = messages[i];
       addMessage(msg.content, msg.role === "assistant" ? "ai" : "user");
     }
   } else {
     // Show only the latest user and AI message (if any)
     let lastUser = null;
     let lastAI = null;
-    for (let i = fullHistory.length - 1; i >= 0; i--) {
-      if (!lastAI && fullHistory[i].role === "assistant") {
-        lastAI = fullHistory[i];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (!lastAI && messages[i].role === "assistant") {
+        lastAI = messages[i];
       }
-      if (!lastUser && fullHistory[i].role === "user") {
-        lastUser = fullHistory[i];
+      if (!lastUser && messages[i].role === "user") {
+        lastUser = messages[i];
       }
       if (lastUser && lastAI) break;
     }
@@ -77,17 +72,14 @@ function renderConversation() {
 async function getAIResponse() {
   // Show a loading message
   if (showHistoryEnabled) {
-    // If showing history, render the conversation and add "Thinking..." at the end
     renderConversation();
     addMessage("Thinking...", "ai");
   } else {
-    // If not showing history, just show the latest user message and "Thinking..."
     clearChatMessages();
-    // Find the latest user message
     let lastUser = null;
-    for (let i = fullHistory.length - 1; i >= 0; i--) {
-      if (fullHistory[i].role === "user") {
-        lastUser = fullHistory[i];
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        lastUser = messages[i];
         break;
       }
     }
@@ -96,29 +88,30 @@ async function getAIResponse() {
   }
 
   // Prepare the API request
+  // Use your Cloudflare Worker endpoint if deployed, otherwise OpenAI API
   const apiUrl = "https://api.openai.com/v1/chat/completions";
   const apiKey = OPENAI_API_KEY;
 
-  // Always set messages based on contextTrackingEnabled before sending
+  // Build the request body
+  let apiMessages;
   if (!contextTrackingEnabled) {
     // Only send system prompt and latest user message
-    messages = [
-      fullHistory[0], // system prompt
-      fullHistory[fullHistory.length - 1], // latest user message
+    apiMessages = [
+      messages[0], // system prompt
+      messages[messages.length - 1], // latest user message
     ];
   } else {
-    // Send the full conversation
-    messages = [...fullHistory];
+    // Send the full conversation for context
+    apiMessages = [...messages];
   }
 
   const requestBody = {
     model: "gpt-4o",
-    messages: messages,
+    messages: apiMessages,
     max_tokens: 300,
   };
 
   try {
-    // Send the request to OpenAI
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: {
@@ -128,7 +121,6 @@ async function getAIResponse() {
       body: JSON.stringify(requestBody),
     });
 
-    // Parse the response
     const data = await response.json();
 
     // Remove the loading message
@@ -137,17 +129,16 @@ async function getAIResponse() {
       chatWindow.removeChild(loadingMsg);
     }
 
-    // Get the AI's reply
     const aiReply =
       data.choices && data.choices[0].message.content
         ? data.choices[0].message.content.trim()
         : "Sorry, I couldn't get a response. Please try again.";
 
-    // Add AI reply to full history
-    fullHistory.push({ role: "assistant", content: aiReply });
+    addMessage(aiReply, "ai");
+    messages.push({ role: "assistant", content: aiReply });
 
-    // Render conversation based on showHistoryEnabled
-    renderConversation();
+    // Re-render if showing history
+    if (showHistoryEnabled) renderConversation();
   } catch (error) {
     const loadingMsg = chatWindow.querySelector(".msg.ai:last-child");
     if (loadingMsg && loadingMsg.textContent === "Thinking...") {
@@ -246,13 +237,6 @@ function isRelatedQuestion(text) {
     "clarifying",
     "pore",
     "pores",
-    "pimple",
-    "pimples",
-    "zit",
-    "zits",
-    "blemishes",
-    "acne",
-    "breakout",
     "sunscreen",
     "blackhead",
     "whitehead",
@@ -296,14 +280,16 @@ function isRelatedQuestion(text) {
 chatForm.addEventListener("submit", (e) => {
   e.preventDefault();
 
+  // Get the user's message
   const userMsg = userInput.value.trim();
   if (!userMsg) return;
 
-  clearChatMessages();
-
+  // Add user's message to chat window
   addMessage(userMsg, "user");
 
+  // Check if the question is related to L'Oréal products or routines
   if (!isRelatedQuestion(userMsg)) {
+    // If not related, show a message and do not call the API
     addMessage(
       "Sorry, I can only answer questions about L'Oréal products and routines. Please ask something related.",
       "ai"
@@ -312,16 +298,19 @@ chatForm.addEventListener("submit", (e) => {
     return;
   }
 
-  fullHistory.push({ role: "user", content: userMsg });
+  // Add user's message to messages array
+  messages.push({ role: "user", content: userMsg });
 
+  // Clear the input box
   userInput.value = "";
 
+  // Get AI response
   getAIResponse();
 });
 
-// Context tracking toggle button
+// Add context tracking toggle button
 const toggleBtn = document.createElement("button");
-toggleBtn.textContent = "Toggle Context Tracking";
+toggleBtn.textContent = "Context Tracking: ON";
 toggleBtn.className = "msg context-toggle";
 toggleBtn.style.margin = "10px 0 0 0";
 toggleBtn.onclick = function () {
@@ -333,9 +322,9 @@ toggleBtn.onclick = function () {
 };
 chatWindow.parentNode.insertBefore(toggleBtn, chatWindow);
 
-// Show history toggle button
+// Add show history toggle button
 const historyBtn = document.createElement("button");
-historyBtn.textContent = "Show Full Conversation";
+historyBtn.textContent = "Show Full Conversation: ON";
 historyBtn.className = "msg context-toggle";
 historyBtn.style.margin = "10px 0 0 0";
 historyBtn.onclick = function () {
@@ -345,5 +334,4 @@ historyBtn.onclick = function () {
     : "Show Full Conversation: OFF";
   renderConversation();
 };
-// Insert below the context tracking button
 toggleBtn.parentNode.insertBefore(historyBtn, toggleBtn.nextSibling);
