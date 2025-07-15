@@ -3,6 +3,7 @@ const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
 
+const workerUrl = "https://old-recipe-c21d.jhunt25.workers.dev/";
 // Set initial message
 chatWindow.textContent = "👋 Hello! How can I help you today?";
 
@@ -89,7 +90,7 @@ async function getAIResponse() {
 
   // Prepare the API request
   // Use your Cloudflare Worker endpoint if deployed, otherwise OpenAI API
-  const apiUrl = "https://old-recipe-c21d.jhunt25.workers.dev/";
+  const apiUrl = "https://api.openai.com/v1/chat/completions"; // Replace with your Cloudflare Worker URL if using
   const apiKey = OPENAI_API_KEY;
 
   // Build the request body
