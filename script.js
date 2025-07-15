@@ -89,7 +89,7 @@ async function getAIResponse() {
 
   // Prepare the API request
   // Use your Cloudflare Worker endpoint if deployed, otherwise OpenAI API
-  const apiUrl = "https://api.openai.com/v1/chat/completions";
+  const apiUrl = "https://old-recipe-c21d.jhunt25.workers.dev/";
   const apiKey = OPENAI_API_KEY;
 
   // Build the request body
