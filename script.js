@@ -1,13 +1,12 @@
-/* DOM elements */
+// Get DOM elements
 const chatForm = document.getElementById("chatForm");
 const userInput = document.getElementById("userInput");
 const chatWindow = document.getElementById("chatWindow");
 
-const workerUrl = "https://old-recipe-c21d.jhunt25.workers.dev/";
-// Set initial message
+// Show a welcome message
 chatWindow.textContent = "👋 Hello! How can I help you today?";
 
-// Store the conversation as an array of messages
+// Store the conversation
 let messages = [
   {
     role: "system",
@@ -16,52 +15,43 @@ let messages = [
   },
 ];
 
-// Add context tracking and show history options
+// Track context and history
 let contextTrackingEnabled = true;
 let showHistoryEnabled = true;
 
-// Function to add a message to the chat window
+// Add a message to the chat window
 function addMessage(text, sender) {
-  // Create a new div for the message
   const msgDiv = document.createElement("div");
   msgDiv.className = `msg ${sender}`;
   msgDiv.textContent = text;
   chatWindow.appendChild(msgDiv);
-  // Scroll to the bottom
   chatWindow.scrollTop = chatWindow.scrollHeight;
 }
 
-// Function to clear all user and AI messages from the chat window
+// Clear all messages from the chat window
 function clearChatMessages() {
   while (chatWindow.firstChild) {
     chatWindow.removeChild(chatWindow.firstChild);
   }
 }
 
-// Function to render the conversation in the chat window
+// Render the conversation in the chat window
 function renderConversation() {
   clearChatMessages();
   if (showHistoryEnabled) {
     // Show all user and AI messages (skip system)
-    let startIdx = 0;
-    if (messages.length > 0 && messages[0].role === "system") {
-      startIdx = 1;
-    }
+    let startIdx = messages[0].role === "system" ? 1 : 0;
     for (let i = startIdx; i < messages.length; i++) {
       const msg = messages[i];
       addMessage(msg.content, msg.role === "assistant" ? "ai" : "user");
     }
   } else {
-    // Show only the latest user and AI message (if any)
+    // Show only the latest user and AI message
     let lastUser = null;
     let lastAI = null;
     for (let i = messages.length - 1; i >= 0; i--) {
-      if (!lastAI && messages[i].role === "assistant") {
-        lastAI = messages[i];
-      }
-      if (!lastUser && messages[i].role === "user") {
-        lastUser = messages[i];
-      }
+      if (!lastAI && messages[i].role === "assistant") lastAI = messages[i];
+      if (!lastUser && messages[i].role === "user") lastUser = messages[i];
       if (lastUser && lastAI) break;
     }
     if (lastUser) addMessage(lastUser.content, "user");
@@ -69,91 +59,9 @@ function renderConversation() {
   }
 }
 
-// Function to call OpenAI API
-async function getAIResponse() {
-  // Show a loading message
-  if (showHistoryEnabled) {
-    renderConversation();
-    addMessage("Thinking...", "ai");
-  } else {
-    clearChatMessages();
-    let lastUser = null;
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "user") {
-        lastUser = messages[i];
-        break;
-      }
-    }
-    if (lastUser) addMessage(lastUser.content, "user");
-    addMessage("Thinking...", "ai");
-  }
-
-  // Prepare the API request
-  // Use your Cloudflare Worker endpoint if deployed, otherwise OpenAI API
-  const apiUrl = "https://api.openai.com/v1/chat/completions"; // Replace with your Cloudflare Worker URL if using
-  const apiKey = OPENAI_API_KEY;
-
-  // Build the request body
-  let apiMessages;
-  if (!contextTrackingEnabled) {
-    // Only send system prompt and latest user message
-    apiMessages = [
-      messages[0], // system prompt
-      messages[messages.length - 1], // latest user message
-    ];
-  } else {
-    // Send the full conversation for context
-    apiMessages = [...messages];
-  }
-
-  const requestBody = {
-    model: "gpt-4o",
-    messages: apiMessages,
-    max_tokens: 300,
-  };
-
-  try {
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    const data = await response.json();
-
-    // Remove the loading message
-    const loadingMsg = chatWindow.querySelector(".msg.ai:last-child");
-    if (loadingMsg && loadingMsg.textContent === "Thinking...") {
-      chatWindow.removeChild(loadingMsg);
-    }
-
-    const aiReply =
-      data.choices && data.choices[0].message.content
-        ? data.choices[0].message.content.trim()
-        : "Sorry, I couldn't get a response. Please try again.";
-
-    addMessage(aiReply, "ai");
-    messages.push({ role: "assistant", content: aiReply });
-
-    // Re-render if showing history
-    if (showHistoryEnabled) renderConversation();
-  } catch (error) {
-    const loadingMsg = chatWindow.querySelector(".msg.ai:last-child");
-    if (loadingMsg && loadingMsg.textContent === "Thinking...") {
-      chatWindow.removeChild(loadingMsg);
-    }
-    addMessage("Sorry, there was a problem connecting to the AI.", "ai");
-  }
-}
-
-// Function to check if the question is related to L'Oréal products or routines
+// Check if the question is related to L'Oréal products or routines
 function isRelatedQuestion(text) {
-  // Convert text to lowercase for easier checking
   const lowerText = text.toLowerCase();
-  // Expanded list of keywords to check for relevance
   const keywords = [
     "l'oréal",
     "loreal",
@@ -273,24 +181,98 @@ function isRelatedQuestion(text) {
     "self-care",
     "personal care",
   ];
-  // Return true if any keyword is found in the user's message
   return keywords.some((keyword) => lowerText.includes(keyword));
 }
 
-// Handle form submit
-chatForm.addEventListener("submit", (e) => {
-  e.preventDefault();
+// Call the OpenAI API using async/await
+async function getAIResponse() {
+  // Show a loading message
+  if (showHistoryEnabled) {
+    renderConversation();
+    addMessage("Thinking...", "ai");
+  } else {
+    clearChatMessages();
+    let lastUser = null;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "user") {
+        lastUser = messages[i];
+        break;
+      }
+    }
+    if (lastUser) addMessage(lastUser.content, "user");
+    addMessage("Thinking...", "ai");
+  }
 
-  // Get the user's message
+  // Build the request body
+  let apiMessages = contextTrackingEnabled
+    ? [...messages]
+    : [messages[0], messages[messages.length - 1]];
+
+  const requestBody = {
+    model: "gpt-4o",
+    messages: apiMessages,
+    max_tokens: 300,
+  };
+
+  // Use your Cloudflare Worker endpoint
+  const apiUrl = "https://old-recipe-c21d.jhunt25.workers.dev/";
+  //const apiKey = OPENAI_API_KEY; // Not needed for Worker
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const data = await response.json();
+
+    // Remove the loading message
+    const loadingMsg = chatWindow.querySelector(".msg.ai:last-child");
+    if (loadingMsg && loadingMsg.textContent === "Thinking...") {
+      chatWindow.removeChild(loadingMsg);
+    }
+
+    // Get the AI reply safely
+    let aiReply = "Sorry, I couldn't get a response. Please try again.";
+    if (
+      data.choices &&
+      Array.isArray(data.choices) &&
+      data.choices.length > 0 &&
+      data.choices[0].message &&
+      data.choices[0].message.content
+    ) {
+      aiReply = data.choices[0].message.content.trim();
+    }
+
+    // Show the AI reply in the chat window
+    addMessage(aiReply, "ai");
+    messages.push({ role: "assistant", content: aiReply });
+
+    // Re-render if showing history
+    if (showHistoryEnabled) renderConversation();
+  } catch (error) {
+    // Remove loading message if error
+    const loadingMsg = chatWindow.querySelector(".msg.ai:last-child");
+    if (loadingMsg && loadingMsg.textContent === "Thinking...") {
+      chatWindow.removeChild(loadingMsg);
+    }
+    addMessage("Sorry, there was a problem connecting to the AI.", "ai");
+  }
+}
+
+// Handle form submit
+chatForm.addEventListener("submit", function (e) {
+  e.preventDefault();
   const userMsg = userInput.value.trim();
   if (!userMsg) return;
 
-  // Add user's message to chat window
   addMessage(userMsg, "user");
 
-  // Check if the question is related to L'Oréal products or routines
+  // Only call the API if the question is related
   if (!isRelatedQuestion(userMsg)) {
-    // If not related, show a message and do not call the API
     addMessage(
       "Sorry, I can only answer questions about L'Oréal products and routines. Please ask something related.",
       "ai"
@@ -299,13 +281,8 @@ chatForm.addEventListener("submit", (e) => {
     return;
   }
 
-  // Add user's message to messages array
   messages.push({ role: "user", content: userMsg });
-
-  // Clear the input box
   userInput.value = "";
-
-  // Get AI response
   getAIResponse();
 });
 
